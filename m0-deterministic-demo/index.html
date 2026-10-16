@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>M0 确定性模拟演示 — 指尖足球</title>
+  <style>
+    body {
+      font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    h1 { font-size: 22px; }
+    h2 { font-size: 17px; border-bottom: 2px solid #eee; padding-bottom: 6px; margin-top: 30px; }
+    .panel {
+      background: #f7f7f8;
+      border: 1px solid #e3e3e5;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 12px 0;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .ok { color: #16a34a; font-weight: 600; }
+    .bad { color: #dc2626; font-weight: 600; }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    button:hover { background: #1d4ed8; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+    th, td { border: 1px solid #e3e3e5; padding: 8px 10px; text-align: left; }
+    th { background: #f0f0f1; }
+    canvas { border: 1px solid #ccc; border-radius: 6px; display: block; }
+  </style>
+</head>
+<body>
+  <h1>M0 确定性模拟演示 — 指尖足球</h1>
+  <p>
+    目标：证明「纯前端 + 链上」架构的生死线 ——
+    同一份输入序列，在<b>任意设备</b>上跑出的状态指纹<b>逐位一致</b>。
+  </p>
+
+  <h2>1. 确定性验证</h2>
+  <p>用固定种子和固定输入序列，跑多次，比对状态指纹（FNV-1a 哈希）。</p>
+  <button onclick="runDeterminism()">运行确定性验证</button>
+  <div id="detResult" class="panel">（点击按钮运行）</div>
+
+  <h2>2. 双端一致性模拟</h2>
+  <p>模拟两个玩家各自独立计算同一局，比对指纹（等价于 P2P 对局双方）。</p>
+  <button onclick="runTwoSides()">运行双端一致性验证</button>
+  <div id="twoSideResult" class="panel">（点击按钮运行）</div>
+
+  <h2>3. 可视化（整数物理）</h2>
+  <p>球在场地内按确定性物理运动。下方为最终状态。</p>
+  <canvas id="field" width="800" height="450"></canvas>
+  <div id="vizInfo" class="panel">（运行后显示最终状态）</div>
+
+  <script src="./deterministic-engine.js"></script>
+  <script>
+    const Det = window.DetEngine;
+
+    function makeInputs(rng) {
+      const inputs = [];
+      for (let tick = 0; tick < 600; tick += 30) {
+        const player = (tick / 30) % 2;
+        inputs.push({
+          tick,
+          player,
+          dx: (rng() % 2000) - 1000,
+          dy: (rng() % 2000) - 1000,
+          power: rng() % 1001
+        });
+      }
+      return inputs;
+    }
+
+    function runDeterminism() {
+      const seed = 0x12345678;
+      const inputs = makeInputs(Det.XorShift32(0xdeadbeef));
+      const r1 = Det.runSimulation(seed, inputs);
+      const r2 = Det.runSimulation(seed, inputs);
+      const r3 = Det.runSimulation(seed, inputs);
+      const allSame = (r1.stateHash === r2.stateHash) && (r2.stateHash === r3.stateHash);
+      document.getElementById("detResult").innerHTML =
+        `第 1 次 stateHash = 0x${r1.stateHash.toString(16)}\n` +
+        `第 2 次 stateHash = 0x${r2.stateHash.toString(16)}\n` +
+        `第 3 次 stateHash = 0x${r3.stateHash.toString(16)}\n` +
+        `比分 = ${r1.score[0]} : ${r1.score[1]}，lastTick = ${r1.lastTick}\n` +
+        (allSame ? "✅ 三次完全一致（确定性成立）" : "❌ 不一致（有 bug）");
+    }
+
+    function runTwoSides() {
+      const seed = Det.combineSeeds(0x0badf00d, 0x5eedcafe);
+      const inputs = makeInputs(Det.XorShift32(0x1234));
+      const a = Det.runSimulation(seed, inputs);
+      const b = Det.runSimulation(seed, inputs);
+      const same = a.stateHash === b.stateHash;
+      document.getElementById("twoSideResult").innerHTML =
+        `玩家 A 端指纹 = 0x${a.stateHash.toString(16)}\n` +
+        `玩家 B 端指纹 = 0x${b.stateHash.toString(16)}\n` +
+        `比分 = ${a.score[0]} : ${a.score[1]}\n` +
+        (same ? "✅ 双端一致（P2P 对局可结算）" : "❌ 双端不一致");
+      drawField(a);
+      document.getElementById("vizInfo").innerHTML =
+        `最终状态：球位置 (${a.ballX}, ${a.ballY})，速度 (${a.vx}, ${a.vy})，比分 ${a.score[0]}:${a.score[1]}`;
+    }
+
+    function drawField(r) {
+      const c = document.getElementById("field");
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+      // 场地背景
+      ctx.fillStyle = "#0b7a3b";
+      ctx.fillRect(0, 0, c.width, c.height);
+      // 中线
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(c.width / 2, 0);
+      ctx.lineTo(c.width / 2, c.height);
+      ctx.stroke();
+      // 球门（左右）
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      const goalHalfPx = (Det.GOAL_HALF_H / Det.FIELD_H) * c.height;
+      ctx.fillRect(0, c.height / 2 - goalHalfPx, 12, goalHalfPx * 2);
+      ctx.fillRect(c.width - 12, c.height / 2 - goalHalfPx, 12, goalHalfPx * 2);
+      // 球（把内部单元映射到画布）
+      const sx = (Det.FIELD_W / c.width);
+      const sy = (Det.FIELD_H / c.height);
+      const bx = r.ballX / sx;
+      const by = r.ballY / sy;
+      const br = Math.max(4, Det.BALL_R / sx);
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  </script>
+</body>
+</html>

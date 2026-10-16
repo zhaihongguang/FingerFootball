@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>指尖足球 PvP — 台球式对局</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --felt: #0f2f22;
+      --felt-deep: #081c14;
+      --wood: #4a2815;
+      --wood-deep: #2c140c;
+      --gold: #d9a441;
+      --gold-light: #f7dd9a;
+      --red: #b03030;
+      --red-deep: #741a1c;
+      --cream: #f7eed8;
+      --muted: #b8ad91;
+      --line: rgba(217,164,65,.28);
+    }
+    html, body { min-height: 100%; }
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      color: var(--cream);
+      background:
+        radial-gradient(circle at 14% 8%, rgba(217,164,65,.15), transparent 30%),
+        radial-gradient(circle at 88% 92%, rgba(176,48,48,.16), transparent 28%),
+        var(--felt-deep);
+      min-height: 100vh;
+      padding: 14px;
+    }
+    #app {
+      max-width: 1180px;
+      margin: 0 auto;
+      min-height: calc(100vh - 28px);
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(38,20,12,.56), rgba(8,28,20,.82));
+      box-shadow: 0 24px 60px rgba(0,0,0,.55);
+      overflow: hidden;
+    }
+    .screen { display: none; flex: 1; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #4f2b17 0%, #2b140d 100%);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-badge {
+      width: 42px; height: 42px; flex: 0 0 42px;
+      display: grid; place-items: center;
+      font-size: 24px;
+      border: 2px solid var(--gold);
+      border-radius: 8px;
+      background: var(--red);
+      color: #fff;
+    }
+    .brand h1 { font-size: 20px; color: var(--gold-light); letter-spacing: .5px; }
+    .brand .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .wallet-addr {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 11px;
+      color: var(--gold-light);
+      margin-top: 4px;
+      opacity: .85;
+      word-break: break-all;
+    }
+    .logout-btn {
+      margin-top: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .logout-btn:hover { color: var(--gold-light); border-color: var(--gold); }
+    .wallet-stats { display: flex; gap: 10px; }
+    .wallet {
+      min-width: 170px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(8,28,20,.68);
+    }
+    .wallet .label { font-size: 11px; color: var(--muted); }
+    .wallet .value { font-size: 18px; font-weight: 800; color: var(--gold-light); margin-top: 2px; }
+    .wallet .small { font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .approve-row { display: flex; gap: 6px; margin-top: 8px; }
+    .approve-row input {
+      flex: 1;
+      min-width: 0;
+      width: 70px;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(4,17,12,.78);
+      color: var(--cream);
+      font-size: 12px;
+    }
+    .wallet button {
+      flex: 0 0 auto;
+      margin-top: 0;
+      width: auto;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--gold);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--gold-light);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .wallet button:hover { background: rgba(217,164,65,.14); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .lobby {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 250px minmax(260px, 1fr) 360px;
+      gap: 12px;
+      padding: 14px;
+      align-items: stretch;
+      min-height: 0;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(8,28,20,.68);
+      box-shadow: inset 0 1px 0 rgba(247,221,154,.06);
+      padding: 14px;
+      min-height: 0;
+    }
+    .panel-title {
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+    }
+
+    .left-panel { display: flex; flex-direction: column; }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 12px;
+      margin-bottom: 8px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--cream);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+    .menu-item:hover { border-color: var(--line); background: rgba(217,164,65,.08); }
+    .menu-item.disabled, .menu-item:disabled {
+      opacity: .38;
+      cursor: not-allowed;
+      pointer-events: none;
+      filter: grayscale(1);
+    }
+    .menu-item:disabled:hover { border-color: transparent; background: transparent; }
+    .menu-item.selected {
+      border-color: var(--gold);
+      background: linear-gradient(180deg, rgba(217,164,65,.22), rgba(176,48,48,.14));
+      color: #fff;
+    }
+    .menu-item .ico { width: 24px; text-align: center; font-size: 18px; }
+    .menu-space { flex: 1; }
+
+    .center-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .rules { display: flex; flex-direction: column; gap: 10px; }
+    .rule-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(8,28,20,.55);
+    }
+    .rule-ico {
+      width: 24px; height: 24px; flex: 0 0 24px;
+      display: grid; place-items: center;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #261309;
+      font-weight: 900;
+      font-size: 12px;
+      margin-top: 1px;
+    }
+    .rule-row b { display: block; color: var(--gold-light); font-size: 13px; }
+    .rule-row p { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+    .center-note {
+      margin-top: auto;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(8,28,20,.5);
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .right-panel { overflow: auto; display: flex; flex-direction: column; }
+    .room-list { display: flex; flex-direction: column; gap: 10px; }
+    .room {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px 14px;
+      background: linear-gradient(180deg, rgba(74,40,21,.82), rgba(20,10,7,.76));
+      cursor: pointer;
+      position: relative;
+    }
+    .room:hover { border-color: rgba(217,164,65,.55); }
+    .room.selected {
+      border-color: var(--gold);
+      background: linear-gradient(180deg, rgba(217,164,65,.18), rgba(176,48,48,.12));
+      box-shadow: 0 0 0 1px var(--gold), 0 10px 20px rgba(0,0,0,.2);
+    }
+    .room .level { position: absolute; top: 11px; right: 14px; font-size: 11px; color: var(--gold); }
+    .room .room-name { font-size: 15px; font-weight: 900; color: #fff; }
+    .room .stake { font-size: 12px; color: var(--gold-light); margin-top: 5px; }
+    .room .meta { font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .room .dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #58cb6a;
+      margin-right: 5px;
+    }
+    .right-actions { margin-top: auto; padding-top: 12px; }
+    .start {
+      width: 100%;
+      padding: 16px 14px;
+      border: 1px solid var(--gold);
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--red), var(--red-deep));
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 6px 0 rgba(60,9,12,.6), 0 10px 22px rgba(0,0,0,.25);
+    }
+    .start:hover { filter: brightness(1.08); }
+    .hint { margin-top: 8px; font-size: 11px; color: var(--muted); text-align: center; }
+
+    /* 登录、匹配、超时、对局、历史、结算通用样式 */
+    .auth-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 520px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .auth-screen p { font-size: 14px; color: #cfc7af; line-height: 1.7; margin-bottom: 18px; }
+    .auth-screen button {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid var(--gold);
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--red), var(--red-deep));
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .auth-screen button.ghost {
+      background: transparent;
+      color: var(--gold-light);
+      font-weight: 700;
+      margin-top: 8px;
+    }
+    .auth-screen .muted { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .countdown { font-size: 32px; font-weight: 700; text-align: center; margin: 20px 0; color: var(--gold-light); }
+    .match-screen, .timeout-screen, .history-screen, .finished-screen {
+      flex: 1;
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 22px;
+    }
+    .center-text { text-align: center; font-size: 15px; color: #cfc7af; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 14px 0; }
+    .ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--gold-light);
+      border-radius: 7px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ghost:hover { background: rgba(217,164,65,.12); }
+    .muted { color: var(--muted); font-size: 12px; }
+    .mono { font-family: "SF Mono", Consolas, monospace; font-size: 12px; word-break: break-all; }
+    canvas { width: 100%; height: auto; border-radius: 8px; display: block; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,.45); }
+    .hud { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 6px; font-size: 14px; }
+    .turn-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .turn-badge.me { background: var(--gold); color: #261309; }
+    .turn-badge.opp { background: var(--red); color: #fff; }
+    .score-board { font-size: 18px; font-weight: 700; color: #fff; }
+    .hint-text { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+    #history-list {
+      min-height: 140px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(8,28,20,.5);
+      padding: 12px;
+    }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; }
+    th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; color: var(--cream); }
+
+    @media (max-width: 960px) {
+      body { padding: 8px; }
+      #app { min-height: calc(100vh - 16px); border-radius: 8px; }
+      .topbar { gap: 10px; padding: 10px; }
+      .brand-badge { width: 34px; height: 34px; flex-basis: 34px; font-size: 18px; }
+      .brand h1 { font-size: 15px; }
+      .brand .sub { font-size: 10px; }
+      .wallet-addr { font-size: 10px; }
+      .wallet { min-width: 0; padding: 7px 9px; }
+      .wallet .label { font-size: 10px; }
+      .wallet .value { font-size: 14px; }
+      .wallet .small { display: none; }
+      .wallet button { padding: 5px 6px; font-size: 10px; margin-top: 5px; }
+      .lobby {
+        grid-template-columns: 112px minmax(0, 1fr) 118px;
+        gap: 8px;
+        padding: 8px;
+      }
+      .panel { padding: 8px; }
+      .panel-title { font-size: 10px; letter-spacing: 1px; padding-bottom: 7px; margin-bottom: 7px; }
+      .menu-item { padding: 8px 6px; gap: 4px; font-size: 11px; margin-bottom: 0; }
+      .menu-item .ico { font-size: 14px; width: auto; }
+      .menu-space { display: none; }
+      .rules { gap: 6px; }
+      .rule-row { padding: 7px 8px; }
+      .rule-ico { width: 20px; height: 20px; flex-basis: 20px; font-size: 10px; }
+      .rule-row b { font-size: 11px; }
+      .rule-row p { font-size: 10px; }
+      .center-note { font-size: 10px; padding: 7px 8px; }
+      .room-list { gap: 6px; }
+      .room { padding: 8px; }
+      .room .level { top: 6px; right: 8px; font-size: 9px; }
+      .room .room-name { font-size: 12px; }
+      .room .stake { font-size: 10px; margin-top: 3px; }
+      .room .meta { font-size: 9px; margin-top: 4px; }
+      .right-actions { padding-top: 8px; }
+      .start { padding: 12px 8px; font-size: 13px; }
+      .hint { font-size: 9px; }
+    }
+    @media (max-width: 520px) {
+      body { padding: 5px; }
+      #app { min-height: calc(100vh - 10px); }
+      .topbar { flex-wrap: wrap; row-gap: 7px; }
+      .brand { width: 100%; }
+      .wallet-stats { width: 100%; }
+      .wallet { flex: 1 1 0; }
+      .lobby {
+        grid-template-columns: 92px minmax(0, 1fr) 104px;
+        gap: 6px;
+        padding: 6px;
+      }
+      .panel { padding: 6px; }
+      .panel-title { text-align: center; font-size: 9px; }
+      .menu-item { flex-direction: column; padding: 7px 3px; gap: 2px; font-size: 10px; }
+      .menu-item .ico { font-size: 17px; }
+      .rule-row b { font-size: 10px; }
+      .rule-row p { display: none; }
+      .room .level { display: none; }
+      .room .meta { display: none; }
+      .room .stake { font-size: 9px; }
+      .room .room-name { font-size: 11px; }
+      .wallet-addr { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 登录屏 -->
+    <div id="screen-login" class="screen active">
+      <div class="auth-screen">
+        <p>钱包签名登录（SIWE）：连接钱包后签名一份消息，零 gas；未连接钱包也可进入演示模式。</p>
+        <div style="margin-bottom:10px;">
+          <button id="btn-login" style="width:100%;margin-bottom:8px;">🔑 连接钱包并登录</button>
+          <div id="wallet-options" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px;">
+              <button class="wallet-choice" data-wallet="metamask" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;">
+                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzUiIGhlaWdodD0iMzQiIHZpZXdCb3g9IjAgMCAzNSAzNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMyLjcwNzcgMzIuNzUyMkwyNS4xNjg4IDMwLjUxNzRMMTkuNDgzMyAzMy45MDA4TDE1LjUxNjcgMzMuODk5MUw5LjgyNzkzIDMwLjUxNzRMMi4yOTIyNSAzMi43NTIyTDAgMjUuMDQ4OUwyLjI5MjI1IDE2LjQ5OTNMMCA5LjI3MDk0TDIuMjkyMjUgMC4zMTIyNTZMMTQuMDY3NCA3LjMxNTU0SDIwLjkzMjZMMzIuNzA3NyAwLjMxMjI1NkwzNSA5LjI3MDk0TDMyLjcwNzcgMTYuNDk5M0wzNSAyNS4wNDg5TDMyLjcwNzcgMzIuNzUyMloiIGZpbGw9IiNGRjVDMTYiLz4KPHBhdGggZD0iTTIuMjkzOTUgMC4zMTIyNTZMMTQuMDY5MSA3LjMyMDQ3TDEzLjYwMDggMTIuMTMwMUwyLjI5Mzk1IDAuMzEyMjU2WiIgZmlsbD0iI0ZGNUMxNiIvPgo8cGF0aCBkPSJNOS44Mjk1OSAyNS4wNTIyTDE1LjAxMDYgMjguOTgxMUw5LjgyOTU5IDMwLjUxNzVWMjUuMDUyMloiIGZpbGw9IiNGRjVDMTYiLz4KPHBhdGggZD0iTTE0LjU5NjYgMTguNTU2NUwxMy42MDA5IDEyLjEzMzNMNy4yMjY5MiAxNi41MDA5TDcuMjIzNjMgMTYuNDk5M1YxNi41MDI1TDcuMjQzMzUgMjAuOTk4M0w5LjgyODA5IDE4LjU1NjVIOS44Mjk3NEgxNC41OTY2WiIgZmlsbD0iI0ZGNUMxNiIvPgo8cGF0aCBkPSJNMzIuNzA3NyAwLjMxMjI1NkwyMC45MzI2IDcuMzIwNDdMMjEuMzk5MyAxMi4xMzAxTDMyLjcwNzcgMC4zMTIyNTZaIiBmaWxsPSIjRkY1QzE2Ii8+CjxwYXRoIGQ9Ik0yNS4xNzIyIDI1LjA1MjJMMTkuOTkxMiAyOC45ODExTDI1LjE3MjIgMzAuNTE3NVYyNS4wNTIyWiIgZmlsbD0iI0ZGNUMxNiIvPgo8cGF0aCBkPSJNMjcuNzc2NiAxNi41MDI1SDI3Ljc3ODNIMjcuNzc2NlYxNi40OTkzTDI3Ljc3NSAxNi41MDA5TDIxLjQwMSAxMi4xMzMzTDIwLjQwNTMgMTguNTU2NUgyNS4xNzIyTDI3Ljc1ODYgMjAuOTk4M0wyNy43NzY2IDE2LjUwMjVaIiBmaWxsPSIjRkY1QzE2Ii8+CjxwYXRoIGQ9Ik05LjgyNzkzIDMwLjUxNzVMMi4yOTIyNSAzMi43NTIyTDAgMjUuMDUyMkg5LjgyNzkzVjMwLjUxNzVaIiBmaWxsPSIjRTM0ODA3Ii8+CjxwYXRoIGQ9Ik0xNC41OTQ3IDE4LjU1NDlMMTYuMDM0MSAyNy44NDA2TDE0LjAzOTMgMjIuNjc3N0w3LjIzOTc1IDIwLjk5ODRMOS44MjYxMyAxOC41NTQ5SDE0LjU5M0gxNC41OTQ3WiIgZmlsbD0iI0UzNDgwNyIvPgo8cGF0aCBkPSJNMjUuMTcyMSAzMC41MTc1TDMyLjcwNzggMzIuNzUyMkwzNS4wMDAxIDI1LjA1MjJIMjUuMTcyMVYzMC41MTc1WiIgZmlsbD0iI0UzNDgwNyIvPgo8cGF0aCBkPSJNMjAuNDA1MyAxOC41NTQ5TDE4Ljk2NTggMjcuODQwNkwyMC45NjA3IDIyLjY3NzdMMjcuNzYwMiAyMC45OTg0TDI1LjE3MjIgMTguNTU0OUgyMC40MDUzWiIgZmlsbD0iI0UzNDgwNyIvPgo8cGF0aCBkPSJNMCAyNS4wNDg4TDIuMjkyMjUgMTYuNDk5M0g3LjIyMTgzTDcuMjM5OTEgMjAuOTk2N0wxNC4wMzk0IDIyLjY3NkwxNi4wMzQzIDI3LjgzODlMMTUuMDA4OSAyOC45NzZMOS44Mjc5MyAyNS4wNDcySDBWMjUuMDQ4OFoiIGZpbGw9IiNGRjhENUQiLz4KPHBhdGggZD0iTTM1LjAwMDEgMjUuMDQ4OEwzMi43MDc4IDE2LjQ5OTNIMjcuNzc4M0wyNy43NjAyIDIwLjk5NjdMMjAuOTYwNyAyMi42NzZMMTguOTY1OCAyNy44Mzg5TDE5Ljk5MTIgMjguOTc2TDI1LjE3MjIgMjUuMDQ3MkgzNS4wMDAxVjI1LjA0ODhaIiBmaWxsPSIjRkY4RDVEIi8+CjxwYXRoIGQ9Ik0yMC45MzI1IDcuMzE1NDNIMTcuNDk5OUgxNC4wNjczTDEzLjYwMDYgMTIuMTI1MUwxNi4wMzQyIDI3LjgzNEgxOC45NjU2TDIxLjQwMDggMTIuMTI1MUwyMC45MzI1IDcuMzE1NDNaIiBmaWxsPSIjRkY4RDVEIi8+CjxwYXRoIGQ9Ik0yLjI5MjI1IDAuMzEyMjU2TDAgOS4yNzA5NEwyLjI5MjI1IDE2LjQ5OTNINy4yMjE4M0wxMy41OTkxIDEyLjEzMDFMMi4yOTIyNSAwLjMxMjI1NloiIGZpbGw9IiM2NjE4MDAiLz4KPHBhdGggZD0iTTEzLjE3IDIwLjQxOTlIMTAuOTM2OUw5LjcyMDk1IDIxLjYwNjJMMTQuMDQwOSAyMi42NzI3TDEzLjE3IDIwLjQxODJWMjAuNDE5OVoiIGZpbGw9IiM2NjE4MDAiLz4KPHBhdGggZD0iTTMyLjcwNzcgMC4zMTIyNTZMMzQuOTk5OSA5LjI3MDk0TDMyLjcwNzcgMTYuNDk5M0gyNy43NzgxTDIxLjQwMDkgMTIuMTMwMUwzMi43MDc3IDAuMzEyMjU2WiIgZmlsbD0iIzY2MTgwMCIvPgo8cGF0aCBkPSJNMjEuODMzIDIwLjQxOTlIMjQuMDY5NEwyNS4yODUzIDIxLjYwNzlMMjAuOTYwNCAyMi42NzZMMjEuODMzIDIwLjQxODJWMjAuNDE5OVoiIGZpbGw9IiM2NjE4MDAiLz4KPHBhdGggZD0iTTE5LjQ4MTcgMzAuODM2MkwxOS45OTExIDI4Ljk3OTRMMTguOTY1OCAyNy44NDIzSDE2LjAzMjdMMTUuMDA3MyAyOC45Nzk0TDE1LjUxNjcgMzAuODM2MiIgZmlsbD0iIzY2MTgwMCIvPgo8cGF0aCBkPSJNMTkuNDgxNiAzMC44MzU5VjMzLjkwMjFIMTUuNTE2NlYzMC44MzU5SDE5LjQ4MTZaIiBmaWxsPSIjQzBDNENEIi8+CjxwYXRoIGQ9Ik05LjgyOTU5IDMwLjUxNDJMMTUuNTIgMzMuOTAwOFYzMC44MzQ2TDE1LjAxMDYgMjguOTc3OEw5LjgyOTU5IDMwLjUxNDJaIiBmaWxsPSIjRTdFQkY2Ii8+CjxwYXRoIGQ9Ik0yNS4xNzIxIDMwLjUxNDJMMTkuNDgxNyAzMy45MDA4VjMwLjgzNDZMMTkuOTkxMSAyOC45Nzc4TDI1LjE3MjEgMzAuNTE0MloiIGZpbGw9IiNFN0VCRjYiLz4KPC9zdmc+Cg==" style="width:24px;height:24px;" />
+                <span>MetaMask</span>
+              </button>
+              <button class="wallet-choice" data-wallet="binance" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;">
+                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWxsPSIjMEIwRTExIi8+CjxwYXRoIGQ9Ik01IDE1TDcuMjU4MDYgMTIuNzQxOUw5LjUxNjEzIDE1TDcuMjU4MDYgMTcuMjU4MUw1IDE1WiIgZmlsbD0iI0YwQjkwQiIvPgo8cGF0aCBkPSJNOC44NzA5NyAxMS4xMjlMMTUgNUwyMS4xMjkgMTEuMTI5TDE4Ljg3MSAxMy4zODcxTDE1IDkuNTE2MTNMMTEuMTI5IDEzLjM4NzFMOC44NzA5NyAxMS4xMjlaIiBmaWxsPSIjRjBCOTBCIi8+CjxwYXRoIGQ9Ik0xMi43NDE5IDE1TDE1IDEyLjc0MTlMMTcuMjU4MSAxNUwxNSAxNy4yNTgxTDEyLjc0MTkgMTVaIiBmaWxsPSIjRjBCOTBCIi8+CjxwYXRoIGQ9Ik0xMS4xMjkgMTYuNjEyOUw4Ljg3MDk3IDE4Ljg3MUwxNSAyNUwyMS4xMjkgMTguODcxTDE4Ljg3MSAxNi42MTI5TDE1IDIwLjQ4MzlMMTEuMTI5IDE2LjYxMjlaIiBmaWxsPSIjRjBCOTBCIi8+CjxwYXRoIGQ9Ik0yMC40ODM5IDE1TDIyLjc0MTkgMTIuNzQxOUwyNSAxNUwyMi43NDE5IDE3LjI1ODFMMjAuNDgzOSAxNVoiIGZpbGw9IiNGMEI5MEIiLz4KPC9zdmc+Cg==" style="width:24px;height:24px;" />
+                <span>Binance Wallet</span>
+              </button>
+              <button class="wallet-choice" data-wallet="okx" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJDSURBVHgB7Zq9jtpAEMfHlhEgQLiioXEkoAGECwoKxMcTRHmC5E3IoyRPkPAEkI7unJYmTgEFTYwA8a3NTKScLnCHN6c9r1e3P2llWQy7M/s1Gv1twCP0ej37dDq9x+Zut1t3t9vZjDEHIiSRSPg4ZpDL5fxkMvn1cDh8m0wmfugfO53OoFQq/crn8wxfY9EymQyrVCqMfHvScZx1p9ls3pFxXBy/bKlUipGPrVbLuQqAfsCliq3zl0H84zwtjQrOw4Mt1W63P5LvBm2d+Xz+YzqdgkqUy+WgWCy+Mc/nc282m4FqLBYL+3g8fjDxenq72WxANZbLJeA13zDX67UDioL5ybXwafMYu64Ltn3bdDweQ5R97fd7GyhBQMipx4POeEDHIu2LfDdBIGGz+hJ9CQ1ABjoA2egAZPM6AgiCAEQhsi/C4jHyPA/6/f5NG3Ks2+3CYDC4aTccDrn6ojG54MnEvG00GoVmWLIRNZ7wTCwDHYBsdACy0QHIhiuRETxlICWpMMhGZHmqS8qH6JLyGegAZKMDkI0uKf8X4SWlaZo+Pp1bRrwlJU8ZKLIvUjKh0WiQ3sRUbNVq9c5Ebew7KEo2m/1p4jJ4qAmDaqDQBzj5XyiAT4VCQezJigAU+IDU+z8vJFnGWeC+bKQV/5VZ71FV6L7PA3gg3tXrdQ+DgLhC+75Wq3no69P3MC0NFQpx2lL04Ql9gHK1bRDjsSBIvScBnDTk1WrlGIZBorIDEYJj+rhdgnQ67VmWRe0zlplXl81vcyEt0rSoYDUAAAAASUVORK5CYII=" style="width:24px;height:24px;" />
+                <span>OKX Wallet</span>
+              </button>
+              <button class="wallet-choice" data-wallet="tronlink" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;">
+                <img src="data:image/png;base64,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" style="width:24px;height:24px;" />
+                <span>TronLink</span>
+              </button>
+            </div>
+          </div>
+          <button id="btn-demo-login" class="ghost">🎭 演示模式（模拟地址，不上链）</button>
+        </div>
+        <div class="muted" id="wallet-status">登录 = 连接钱包 + 签名消息，全程零 gas</div>
+      </div>
+    </div>
+
+    <!-- 大厅屏：斗地主式横向三段布局 -->
+    <div id="screen-lobby" class="screen">
+      <div class="topbar">
+        <div class="brand">
+          <div class="brand-badge">⚽</div>
+          <div>
+            <h1>指尖足球</h1>
+            <div class="sub">PvP 大厅</div>
+            <div class="wallet-addr" id="lobby-address">未连接钱包</div>
+            <button class="logout-btn" id="btn-logout" style="display:none;">退出登录</button>
+          </div>
+        </div>
+        <div class="wallet-stats">
+          <div class="wallet online-card">
+            <div class="label">匹配中/对局中</div>
+            <div class="value" id="online-count">—</div>
+            <div class="small">PvP 实时</div>
+          </div>
+          <div class="wallet">
+            <div class="label">BEM 余额</div>
+            <div class="value" id="vault-balance">—</div>
+            <div class="small" id="wallet-network">BSC Testnet</div>
+          </div>
+          <div class="wallet">
+            <div class="label">BEM 授权额度</div>
+            <div class="value" id="vault-locked">—</div>
+            <div class="approve-row">
+              <input id="vault-amount" type="number" min="0" step="0.001" placeholder="授权数量" />
+              <button id="btn-vault-deposit">授权 BEM</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lobby">
+        <aside class="panel left-panel">
+          <div class="panel-title">切换菜单</div>
+          <button class="menu-item selected" data-mode="bot"><span class="ico">🤖</span><span>本地机器人</span></button>
+          <button class="menu-item" data-mode="pvp"><span class="ico">🌐</span><span>真人匹配</span></button>
+          <div class="menu-space"></div>
+          <button class="menu-item" id="btn-history"><span class="ico">📜</span><span>历史记录</span></button>
+        </aside>
+
+        <section class="panel center-panel">
+          <div class="rules" id="rules-panel">
+            <div class="rule-row"><span class="rule-ico">1</span><div><b>玩法</b><p>双方各 5 颗编号母球，拖动瞄准并击打足球，把足球撞进对方球门。回合制推进，对局时长5分钟，单回合限制30秒，无进球换人，进球/犯规后复位。</p></div></div>
+            <div class="rule-row"><span class="rule-ico">2</span><div><b>pvp流程</b><p>双方分别支付 0.01 / 0.1 等额本金并质押完成后才开局。对局结束后双方各自生成结果签名，胜方提交签名的结果记录并上链。奖金 = 双方本金之和（总奖池） − 3% 手续费。胜方凭败方签名和链上记录领取奖金，败方无需操作。匹配成功后，若一方在付款后 150 秒内未完成质押，另一方可以取消匹配并退出质押。</p></div></div>
+            <div class="rule-row"><span class="rule-ico">3</span><div><b>赛果判定</b><p>先进 5 球获胜或5分钟倒计时结束，按比分判定结果；若平局双方各自领回质押的代币。</p></div></div>
+            <div class="rule-row"><span class="rule-ico">4</span><div><b>奖金领取</b><p>对局奖励胜者可以在结算页面等待链上结算后领取奖励，未领取的奖励可以在【历史记录】中进行领取。</p></div></div>
+            <div class="rule-row"><span class="rule-ico">5</span><div><b>手续费</b><p>每局收取总奖金的3%手续费抽成。</p></div></div>
+          </div>
+          <div id="history-inline" style="display:none;flex:1;min-height:0;flex-direction:column;">
+            <div class="panel-title" style="margin-top:0;">历史记录</div>
+            <div id="history-list" style="flex:1;overflow:auto;min-height:0;"></div>
+            <div class="row" style="justify-content:flex-start;">
+              <button id="btn-clear-history" class="ghost">清空本地历史</button>
+            </div>
+          </div>
+          <div class="center-note" id="mode-hint"></div>
+        </section>
+
+        <aside class="panel right-panel">
+          <div class="panel-title">选择场次</div>
+          <div class="room-list" id="field-list"></div>
+          <div class="right-actions">
+            <button class="start" id="btn-match" disabled>🎮 开始匹配</button>
+            <div class="hint" id="vault-status">选择场次后开始</div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+
+    <!-- 匹配屏 -->
+    <div id="screen-matching" class="screen">
+      <div class="match-screen">
+        <div class="center-text">正在匹配对手…</div>
+        <div class="countdown" id="match-countdown">60</div>
+        <div class="center-text" id="match-extra-hint" style="font-size:12px;color:var(--muted);">1 分钟内匹配不到将提示</div>
+        <div class="row">
+          <button class="ghost" id="btn-cancel-match">取消匹配</button>
+          <button class="ghost" id="btn-refund-match" style="display:none;">取消匹配并退出质押</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 超时提示屏 -->
+    <div id="screen-timeout" class="screen">
+      <div class="timeout-screen">
+        <div class="center-text" style="font-size:16px;margin-bottom:16px;">⏳ 1 分钟内未匹配到对手</div>
+        <div class="row">
+          <button class="ghost" id="btn-keep-wait">继续等待</button>
+          <button class="ghost" id="btn-widen">扩大匹配范围(机器人对战)</button>
+          <button class="ghost" id="btn-exit-match">退出匹配</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 对局屏 -->
+    <div id="screen-playing" class="screen">
+      <div style="max-width:960px;width:100%;margin:0 auto;padding:16px;">
+        <div class="hud" style="justify-content:space-between;">
+          <div id="hud-player0">你（青绿色母球）</div>
+          <div>
+            <span class="turn-badge" id="turn-badge">你的回合</span>
+            <span class="score-board" id="score" style="margin-left:10px;">0 : 0</span>
+          </div>
+          <div id="hud-player1">对手（橙色母球）</div>
+          <button class="ghost" id="btn-exit-game">退出对局</button>
+        </div>
+        <div class="hud" style="justify-content:center;color:var(--gold-light);font-weight:700;">
+          <span id="match-timeout"></span>
+          <span id="turn-timeout"></span>
+        </div>
+        <canvas id="field" width="900" height="500"></canvas>
+        <div class="hint-text" id="hint-text">点击编号母球选中它，拖动瞄准 → 力度箭头，松手击球；借力把 ⚽ 撞进对方球门</div>
+      </div>
+    </div>
+
+    <!-- 结算屏 -->
+    <div id="screen-finished" class="screen">
+      <div class="finished-screen">
+        <div class="center-text" style="font-size:20px;font-weight:700;margin-bottom:14px;" id="result-title"></div>
+        <div class="panel">
+          <div id="settle-score" style="font-size:16px;margin-bottom:8px;"></div>
+          <table id="settle-table"></table>
+        </div>
+        <div class="panel mono">
+          <div id="hash-a"></div>
+          <div id="hash-b"></div>
+          <div id="hash-check"></div>
+        </div>
+        <div id="claim-area" style="display:none;">
+          <div class="row">
+            <button id="btn-claim-reward" style="flex:1;">💰 提取奖金</button>
+          </div>
+          <div class="muted" id="claim-status" style="text-align:center;margin-top:8px;"></div>
+        </div>
+        <div class="row">
+          <button id="btn-again" style="flex:1;">再来一局</button>
+          <button class="ghost" id="btn-back-lobby" style="flex:1;">返回大厅</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 退出对局确认弹框 -->
+    <div id="exit-confirm-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
+      <div style="width:min(92vw,440px);border:1px solid rgba(217,164,65,.5);border-radius:10px;background:linear-gradient(180deg,#35200f,#0d2920);padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.5);">
+        <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:10px;" id="exit-confirm-title">确认退出对局？</div>
+        <div style="font-size:13px;color:#cfc7af;line-height:1.7;margin-bottom:16px;" id="exit-confirm-text">退出后本局进度不会保留。</div>
+        <div class="row" style="margin:0;">
+          <button class="ghost" id="btn-exit-cancel" style="flex:1;">取消</button>
+          <button id="btn-exit-confirm" style="flex:1;">确认退出</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 通用消息弹框 -->
+    <div id="message-modal" style="display:none;position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
+      <div style="width:min(92vw,440px);border:1px solid rgba(217,164,65,.5);border-radius:10px;background:linear-gradient(180deg,#35200f,#0d2920);padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.5);">
+        <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:10px;" id="message-modal-title">提示</div>
+        <div style="font-size:13px;color:#cfc7af;line-height:1.7;margin-bottom:16px;" id="message-modal-text"></div>
+        <div class="row" style="margin:0;">
+          <button id="btn-message-ok" style="flex:1;">知道了</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 台球式引擎 + P2P Netcode（同目录，双击 file:// 也能加载） -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="./contract-config.js"></script>
+  <script src="./deterministic-billiards.js"></script>
+  <script src="./netcode.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

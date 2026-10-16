@@ -1,0 +1,12 @@
+{
+  "name": "fingertip-football-relayer",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ethers": "^6.13.5"
+  }
+}

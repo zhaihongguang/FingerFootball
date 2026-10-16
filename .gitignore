@@ -1,0 +1,11 @@
+node_modules/
+bsc-testnet/artifacts/
+bsc-testnet/cache/
+bsc-testnet/typechain-types/
+pvp-server/logs/
+.env
+.env.*
+*.log
+*.key
+*.pem
+keystore/

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>指尖足球 PvP · 横向大厅设计稿</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --felt: #0f2f22;
+    --felt-deep: #081c14;
+    --wood: #4a2815;
+    --wood-deep: #2c140c;
+    --gold: #d9a441;
+    --gold-light: #f7dd9a;
+    --red: #b03030;
+    --red-deep: #741a1c;
+    --cream: #f7eed8;
+    --muted: #b8ad91;
+    --line: rgba(217,164,65,.28);
+  }
+  html, body { min-height: 100%; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    color: var(--cream);
+    background:
+      radial-gradient(circle at 14% 8%, rgba(217,164,65,.15), transparent 30%),
+      radial-gradient(circle at 88% 92%, rgba(176,48,48,.16), transparent 28%),
+      var(--felt-deep);
+    min-height: 100vh;
+    padding: 14px;
+  }
+  .table {
+    max-width: 1180px;
+    margin: 0 auto;
+    min-height: calc(100vh - 28px);
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(38,20,12,.56), rgba(8,28,20,.82));
+    box-shadow: 0 24px 60px rgba(0,0,0,.55);
+    overflow: hidden;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #4f2b17 0%, #2b140d 100%);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px;
+    display: grid; place-items: center;
+    font-size: 24px;
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    background: var(--red);
+    color: #fff;
+  }
+  .brand h1 { font-size: 20px; color: var(--gold-light); letter-spacing: .5px; }
+  .brand .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .wallet-addr {
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 11px;
+    color: var(--gold-light);
+    margin-top: 4px;
+    opacity: .85;
+  }
+  .wallet-stats { display: flex; gap: 10px; }
+  .wallet {
+    min-width: 170px;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(8,28,20,.68);
+  }
+  .wallet .label { font-size: 11px; color: var(--muted); }
+  .wallet .value { font-size: 18px; font-weight: 800; color: var(--gold-light); margin-top: 2px; }
+  .wallet .small { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .wallet button {
+    margin-top: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--gold-light);
+    cursor: pointer;
+  }
+  .wallet button:hover { background: rgba(217,164,65,.14); }
+
+  .lobby {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 250px minmax(260px, 1fr) 360px;
+    gap: 12px;
+    padding: 14px;
+    align-items: stretch;
+  }
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(8,28,20,.68);
+    box-shadow: inset 0 1px 0 rgba(247,221,154,.06);
+    padding: 14px;
+  }
+  .panel-title {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 12px;
+  }
+
+  .left-panel { display: flex; flex-direction: column; }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 12px;
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--cream);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+  }
+  .menu-item:hover { border-color: var(--line); background: rgba(217,164,65,.08); }
+  .menu-item.selected {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(217,164,65,.22), rgba(176,48,48,.14));
+    color: #fff;
+  }
+  .menu-item .ico { width: 24px; text-align: center; font-size: 18px; }
+  .menu-space { flex: 1; }
+
+  .center-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .rules { display: flex; flex-direction: column; gap: 10px; }
+  .rule-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: rgba(8,28,20,.55);
+  }
+  .rule-ico {
+    width: 24px; height: 24px; flex: 0 0 24px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #261309;
+    font-weight: 900;
+    font-size: 12px;
+    margin-top: 1px;
+  }
+  .rule-row b { display: block; color: var(--gold-light); font-size: 13px; }
+  .rule-row p { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .avatar {
+    width: 64px; height: 64px; flex: 0 0 64px;
+    display: grid; place-items: center;
+    font-size: 32px;
+    border: 3px solid var(--gold);
+    border-radius: 50%;
+    background: linear-gradient(180deg, #e0b35f, #87301f);
+  }
+  .name { font-size: 16px; font-weight: 800; color: #fff; }
+  .addr { font-size: 11px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+  .field { margin-top: 0; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .field input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: rgba(4,17,12,.78);
+    color: var(--cream);
+    font-size: 14px;
+  }
+  .mode-summary {
+    padding: 12px;
+    border: 1px dashed rgba(217,164,65,.38);
+    border-radius: 8px;
+    background: rgba(217,164,65,.06);
+  }
+  .mode-summary b { display: block; color: var(--gold-light); font-size: 13px; margin-bottom: 6px; }
+  .mode-summary p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .center-note {
+    margin-top: auto;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(8,28,20,.5);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .center-note .ico { margin-right: 5px; }
+
+  .right-panel { overflow: auto; display: flex; flex-direction: column; }
+  .room-list { display: flex; flex-direction: column; gap: 10px; }
+  .room {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 13px 14px;
+    background: linear-gradient(180deg, rgba(74,40,21,.82), rgba(20,10,7,.76));
+    cursor: pointer;
+    position: relative;
+  }
+  .room:hover { border-color: rgba(217,164,65,.55); }
+  .room.selected {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(217,164,65,.18), rgba(176,48,48,.12));
+    box-shadow: 0 0 0 1px var(--gold), 0 10px 20px rgba(0,0,0,.2);
+  }
+  .room .level { position: absolute; top: 11px; right: 14px; font-size: 11px; color: var(--gold); }
+  .room .room-name { font-size: 15px; font-weight: 900; color: #fff; }
+  .room .stake { font-size: 12px; color: var(--gold-light); margin-top: 5px; }
+  .room .meta { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .room .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #58cb6a;
+    margin-right: 5px;
+  }
+  .right-actions { margin-top: auto; padding-top: 12px; }
+  .start {
+    width: 100%;
+    padding: 16px 14px;
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    background: linear-gradient(180deg, var(--red), var(--red-deep));
+    color: #fff;
+    font-size: 16px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 0 rgba(60,9,12,.6), 0 10px 22px rgba(0,0,0,.25);
+  }
+  .start:hover { filter: brightness(1.08); }
+  .hint { margin-top: 8px; font-size: 11px; color: var(--muted); text-align: center; }
+
+  @media (max-width: 960px) {
+    body { padding: 8px; }
+    .table { min-height: calc(100vh - 16px); border-radius: 8px; }
+    .topbar {
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+    }
+    .brand { flex: 1; min-width: 0; }
+    .brand-badge { width: 34px; height: 34px; flex-basis: 34px; font-size: 18px; }
+    .brand h1 { font-size: 15px; }
+    .brand .sub { font-size: 10px; }
+    .wallet-stats { flex-shrink: 0; gap: 6px; }
+    .wallet {
+      min-width: 0;
+      padding: 7px 9px;
+    }
+    .wallet .label { font-size: 10px; }
+    .wallet .value { font-size: 14px; }
+    .wallet .small { display: none; }
+    .wallet button { padding: 5px 6px; font-size: 10px; margin-top: 5px; }
+
+    .lobby {
+      grid-template-columns: 112px minmax(0, 1fr) 118px;
+      gap: 8px;
+      padding: 8px;
+    }
+    .panel { padding: 8px; }
+    .panel-title {
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding-bottom: 7px;
+      margin-bottom: 7px;
+    }
+    .left-panel { gap: 4px; }
+    .menu-item {
+      padding: 8px 6px;
+      gap: 4px;
+      font-size: 11px;
+      margin-bottom: 0;
+    }
+    .menu-item .ico { font-size: 14px; width: auto; }
+    .menu-space { display: none; }
+
+    .player-card { gap: 7px; padding: 7px; }
+    .avatar { width: 40px; height: 40px; flex-basis: 40px; font-size: 20px; border-width: 2px; }
+    .name { font-size: 12px; }
+    .addr { font-size: 9px; }
+    .field { margin-top: 8px; }
+    .field label { font-size: 10px; }
+    .field input { padding: 8px; font-size: 12px; }
+    .center-actions { padding-top: 8px; }
+    .start { padding: 12px 8px; font-size: 13px; }
+    .hint { display: none; }
+
+    .right-panel { padding: 8px; }
+    .room-list { gap: 6px; }
+    .room { padding: 8px; }
+    .room .level { top: 6px; right: 8px; font-size: 9px; }
+    .room .room-name { font-size: 12px; }
+    .room .stake { font-size: 10px; margin-top: 3px; }
+    .room .meta { font-size: 9px; margin-top: 4px; }
+  }
+  @media (max-width: 520px) {
+    body { padding: 5px; }
+    .table { min-height: calc(100vh - 10px); }
+    .topbar {
+      flex-wrap: wrap;
+      row-gap: 7px;
+    }
+    .brand { width: 100%; }
+    .wallet-stats { width: 100%; }
+    .wallet { flex: 1 1 0; }
+    .lobby {
+      grid-template-columns: 92px minmax(0, 1fr) 104px;
+      gap: 6px;
+      padding: 6px;
+    }
+    .panel { padding: 6px; }
+    .panel-title { text-align: center; font-size: 9px; }
+    .menu-item {
+      flex-direction: column;
+      padding: 7px 3px;
+      gap: 2px;
+      font-size: 10px;
+    }
+    .menu-item .ico { font-size: 17px; }
+    .avatar-row, .player-card {
+      display: flex;
+      flex-direction: column;
+      text-align: center;
+    }
+    .player-card .addr { display: none; }
+    .field { margin-top: 6px; }
+    .field label { display: none; }
+    .field input { padding: 7px; text-align: center; }
+    .room .level { display: none; }
+    .room .meta { display: none; }
+    .room .stake { font-size: 9px; }
+    .room .room-name { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="table">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-badge">⚽</div>
+      <div>
+        <h1>指尖足球</h1>
+        <div class="sub">PvP 大厅 · 横向三段式</div>
+        <div class="wallet-addr">0x7e9b14ee...3df9f1</div>
+      </div>
+    </div>
+    <div class="wallet-stats">
+      <div class="wallet">
+        <div class="label">BEM 余额</div>
+        <div class="value">12.5000</div>
+        <div class="small">0x1234...abcd</div>
+      </div>
+      <div class="wallet">
+        <div class="label">BEM 授权额度</div>
+        <div class="value">10.0000</div>
+        <button>授权 BEM</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lobby">
+    <aside class="panel left-panel">
+      <div class="panel-title">切换菜单</div>
+      <button class="menu-item selected"><span class="ico">🤖</span><span>本地机器人</span></button>
+      <button class="menu-item"><span class="ico">🌐</span><span>真人匹配</span></button>
+      <div class="menu-space"></div>
+      <button class="menu-item"><span class="ico">📜</span><span>历史记录</span></button>
+    </aside>
+
+    <section class="panel center-panel">
+      <div class="rules">
+        <div class="rule-row"><span class="rule-ico">1</span><div><b>双方各 5 颗编号母球</b><p>选择自己的母球，拖动瞄准并击打足球。</p></div></div>
+        <div class="rule-row"><span class="rule-ico">2</span><div><b>借力撞球入门</b><p>用母球撞击足球，把足球撞进对方球门。</p></div></div>
+        <div class="rule-row"><span class="rule-ico">3</span><div><b>回合制推进</b><p>无进球换人，进球/犯规后复位，先到 5 分获胜。</p></div></div>
+        <div class="rule-row"><span class="rule-ico">4</span><div><b>代币场结算</b><p>双方质押后开局，胜方凭败方签名领取奖励。</p></div></div>
+      </div>
+      <div class="center-note"><span class="ico">📌</span>当前模式：真人匹配 · 场次：免费场</div>
+    </section>
+
+    <aside class="panel right-panel">
+      <div class="panel-title">选择场次</div>
+      <div class="room-list">
+        <div class="room selected">
+          <span class="level">初级场</span>
+          <div class="room-name">免费场</div>
+          <div class="stake">0 代币 / 纯积分</div>
+          <div class="meta"><span class="dot"></span>空闲可进</div>
+        </div>
+        <div class="room">
+          <span class="level">中级场</span>
+          <div class="room-name">0.01 代币</div>
+          <div class="stake">0.01 代币/人 · ≈ $0.38</div>
+          <div class="meta"><span class="dot"></span>空闲可进</div>
+        </div>
+        <div class="room">
+          <span class="level">高级场</span>
+          <div class="room-name">0.1 代币</div>
+          <div class="stake">0.1 代币/人 · ≈ $3.80</div>
+          <div class="meta"><span class="dot"></span>空闲可进</div>
+        </div>
+      </div>
+      <div class="right-actions">
+        <button class="start">🎮 开始匹配</button>
+        <div class="hint">选择场次后开始</div>
+      </div>
+    </aside>
+  </div>
+</div>
+</body>
+</html>
